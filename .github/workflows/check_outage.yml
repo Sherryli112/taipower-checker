@@ -33,4 +33,4 @@ jobs:
           GMAIL_USER:         ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           CHECK_DAYS:         ${{ vars.CHECK_DAYS }}
-        run: python check_outage.py
+        run: python -u check_outage.py
