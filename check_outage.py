@@ -286,6 +286,13 @@ def main() -> None:
 
     print(f"今日符合：{len(today_hits)} 筆 / 近期符合：{len(upcoming_hits)} 筆")
 
+    is_monday = today.weekday() == 0
+    has_outage = bool(today_hits or upcoming_hits)
+
+    if not is_monday and not has_outage:
+        print("無停電記錄且非週一，略過發信。")
+        return
+
     subject, body = build_email(TARGET_ADDRESS, today_hits, upcoming_hits, today)
     send_email(subject, body)
 
