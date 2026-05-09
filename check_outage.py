@@ -15,11 +15,11 @@ import requests
 from bs4 import BeautifulSoup
 
 # ── 設定（從環境變數讀取）─────────────────────────────────────────────────────
-TARGET_ADDRESS     = os.environ.get("TARGET_ADDRESS",     "台北市中正區忠孝東路一段1號")
-RECIPIENT_EMAIL    = os.environ.get("RECIPIENT_EMAIL",    "a0979680465@gmail.com")
-GMAIL_USER         = os.environ.get("GMAIL_USER",         "")
-GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
-CHECK_DAYS         = int(os.environ.get("CHECK_DAYS", "7"))
+TARGET_ADDRESS     = os.environ.get("TARGET_ADDRESS")     or "台北市中正區忠孝東路一段1號"
+RECIPIENT_EMAIL    = os.environ.get("RECIPIENT_EMAIL")    or "a0979680465@gmail.com"
+GMAIL_USER         = os.environ.get("GMAIL_USER")         or ""
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD") or ""
+CHECK_DAYS         = int(os.environ.get("CHECK_DAYS") or "7")
 
 TAIWAN_TZ = ZoneInfo("Asia/Taipei")
 
