@@ -1,4 +1,4 @@
-name: 台電停電每日查詢
+name: 水電查詢日報
 
 on:
   schedule:

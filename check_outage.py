@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-台電計劃停電每日查詢 - 自動發信通知
+水電查詢日報 - 台電計劃停電 + 台水施工停水
 """
 
 import os
@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 from bs4 import BeautifulSoup
+from water import fetch_water_notices
 
 # ── 設定（從環境變數讀取）─────────────────────────────────────────────────────
 TARGET_ADDRESS     = os.environ.get("TARGET_ADDRESS")     or "台北市中正區忠孝東路一段1號"
@@ -197,48 +198,93 @@ def build_table(outages: list[dict]) -> str:
     )
 
 
-def build_email(address: str, today_hits: list, upcoming_hits: list, today: date) -> tuple[str, str]:
-    if today_hits:
-        subject = f"【今日停電警示】{address}"
-        status_color = "#c0392b"
-        status_text = "今日有計劃停電"
-    elif upcoming_hits:
-        subject = f"【近期停電預告】{address}"
-        status_color = "#e67e22"
-        status_text = "近期有計劃停電"
-    else:
-        subject = f"【今日無停電】{address}"
-        status_color = "#27ae60"
-        status_text = "近期無計劃停電"
+def build_water_row(n: dict) -> str:
+    title = n["title"] if len(n["title"]) <= 80 else n["title"][:80] + "..."
+    return (
+        f"<tr>"
+        f"<td style='padding:6px 10px;white-space:nowrap;font-size:12px'>{n['pub_date']}</td>"
+        f"<td style='padding:6px 10px;font-size:12px'>{title}</td>"
+        f"<td style='padding:6px 10px'><a href='{n['link']}'>詳細</a></td>"
+        f"</tr>\n"
+    )
 
-    today_section = (
+
+def build_water_table(notices: list[dict]) -> str:
+    rows = "".join(build_water_row(n) for n in notices)
+    return (
+        "<table border='1' cellpadding='0' cellspacing='0' "
+        "style='border-collapse:collapse;width:100%;border-color:#ccc'>\n"
+        "<tr style='background:#f0f0f0;font-weight:bold'>"
+        "<td style='padding:6px 10px'>公告日期</td>"
+        "<td style='padding:6px 10px'>停水地區</td>"
+        "<td style='padding:6px 10px'>連結</td>"
+        "</tr>\n"
+        f"{rows}</table>"
+    )
+
+
+def build_email(
+    address: str,
+    today_hits: list,
+    upcoming_hits: list,
+    water_notices: list,
+    today: date,
+) -> tuple[str, str]:
+    alerts = []
+    if today_hits:
+        alerts.append("停電警示")
+    elif upcoming_hits:
+        alerts.append("近期停電")
+    if water_notices:
+        alerts.append("停水公告")
+
+    subject = f"【{'・'.join(alerts)}】{address}" if alerts else f"【本週無停電停水】{address}"
+
+    if today_hits:
+        header_color, header_text = "#c0392b", "今日有計劃停電"
+    elif upcoming_hits or water_notices:
+        header_color, header_text = "#e67e22", "近期有停電或停水公告"
+    else:
+        header_color, header_text = "#27ae60", "近期無計劃停電停水"
+
+    power_today = (
         f"<h3 style='color:#c0392b'>今日停電通知（{today}）</h3>{build_table(today_hits)}"
         if today_hits
         else f"<p style='color:#27ae60'><strong>今日（{today}）查無計劃停電。</strong></p>"
     )
-
-    upcoming_section = (
+    power_upcoming = (
         f"<h3 style='color:#e67e22'>未來 {CHECK_DAYS} 天停電預告</h3>{build_table(upcoming_hits)}"
-        if upcoming_hits
-        else ""
+        if upcoming_hits else ""
+    )
+    water_section = (
+        f"<h3 style='color:#2980b9'>近期施工停水公告</h3>{build_water_table(water_notices)}"
+        if water_notices
+        else "<p style='color:#27ae60'><strong>近期查無施工停水公告。</strong></p>"
     )
 
     html = f"""<!DOCTYPE html>
 <html><body style="font-family:sans-serif;max-width:720px;margin:auto;color:#333">
-<div style="background:{status_color};color:white;padding:12px 18px;border-radius:4px 4px 0 0">
-  <h2 style="margin:0">台電計劃停電查詢報告</h2>
-  <p style="margin:4px 0 0">{status_text}</p>
+<div style="background:{header_color};color:white;padding:12px 18px;border-radius:4px 4px 0 0">
+  <h2 style="margin:0">水電查詢日報</h2>
+  <p style="margin:4px 0 0">{header_text}</p>
 </div>
 <div style="border:1px solid #ccc;border-top:none;padding:16px 18px;border-radius:0 0 4px 4px">
   <p><b>監控地址：</b>{address}</p>
   <p><b>查詢日期：</b>{today}（台灣時間）</p>
-  <hr style="border:none;border-top:1px solid #eee">
-  {today_section}
-  {upcoming_section}
+
+  <hr style="border:none;border-top:2px solid #eee;margin:16px 0">
+  <h2 style="margin:0 0 12px">【台電】計劃停電</h2>
+  {power_today}
+  {power_upcoming}
+
+  <hr style="border:none;border-top:2px solid #eee;margin:16px 0">
+  <h2 style="margin:0 0 12px">【台水】施工停水</h2>
+  {water_section}
+
   <hr style="border:none;border-top:1px solid #eee;margin-top:20px">
   <p style="font-size:11px;color:#999">
-    資料來源：台電計劃性工作停電公告｜
-    <a href="https://www.taipower.com.tw/2289/2406/2420/2421/11934/">台電官網</a>
+    台電資料：<a href="https://www.taipower.com.tw/2289/2406/2420/2421/11934/">台電計劃停電公告</a>
+    台水資料：<a href="https://www.water.gov.taipei/Content_List.aspx?n=4D250114FCEAF4CE">臺北自來水停水公告</a>
   </p>
 </div>
 </body></html>"""
@@ -271,6 +317,7 @@ def main() -> None:
     if not city:
         raise SystemExit("ERROR：無法從地址解析出縣市，請確認 TARGET_ADDRESS 格式正確。")
 
+    # 台電查詢
     branch_codes = CITY_TO_BRANCHES.get(city, [])
     if not branch_codes:
         raise SystemExit(f"ERROR：找不到 {city} 對應的台電區處。")
@@ -281,19 +328,22 @@ def main() -> None:
 
     print(f"共取得 {len(all_outages)} 筆停電記錄，開始比對地址...")
 
-    today_hits    = [o for o in all_outages if o["date"] == today         and address_matches(o, district, road)]
+    today_hits    = [o for o in all_outages if o["date"] == today and address_matches(o, district, road)]
     upcoming_hits = [o for o in all_outages if today < o["date"] <= check_until and address_matches(o, district, road)]
 
-    print(f"今日符合：{len(today_hits)} 筆 / 近期符合：{len(upcoming_hits)} 筆")
+    print(f"台電 - 今日符合：{len(today_hits)} 筆 / 近期符合：{len(upcoming_hits)} 筆")
+
+    # 台水查詢
+    water_notices = fetch_water_notices(district, road, CHECK_DAYS)
 
     is_monday = today.weekday() == 0
-    has_outage = bool(today_hits or upcoming_hits)
+    has_alert = bool(today_hits or upcoming_hits or water_notices)
 
-    if not is_monday and not has_outage:
-        print("無停電記錄且非週一，略過發信。")
+    if not is_monday and not has_alert:
+        print("無停電停水記錄且非週一，略過發信。")
         return
 
-    subject, body = build_email(TARGET_ADDRESS, today_hits, upcoming_hits, today)
+    subject, body = build_email(TARGET_ADDRESS, today_hits, upcoming_hits, water_notices, today)
     send_email(subject, body)
 
 
