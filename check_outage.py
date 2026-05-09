@@ -18,7 +18,7 @@ from bs4 import BeautifulSoup
 TARGET_ADDRESS     = os.environ.get("TARGET_ADDRESS")     or "台北市中正區忠孝東路一段1號"
 RECIPIENT_EMAIL    = os.environ.get("RECIPIENT_EMAIL")    or "a0979680465@gmail.com"
 GMAIL_USER         = os.environ.get("GMAIL_USER")         or ""
-GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD") or ""
+GMAIL_APP_PASSWORD = re.sub(r"\s+", "", os.environ.get("GMAIL_APP_PASSWORD") or "")
 CHECK_DAYS         = int(os.environ.get("CHECK_DAYS") or "7")
 
 TAIWAN_TZ = ZoneInfo("Asia/Taipei")
