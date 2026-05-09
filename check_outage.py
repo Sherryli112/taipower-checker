@@ -291,4 +291,15 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import traceback
+    print(f"TARGET_ADDRESS  = {TARGET_ADDRESS}")
+    print(f"RECIPIENT_EMAIL = {RECIPIENT_EMAIL}")
+    print(f"GMAIL_USER      = {GMAIL_USER}")
+    print(f"GMAIL_APP_PASSWORD set = {'是' if GMAIL_APP_PASSWORD else '否'}")
+    print(f"CHECK_DAYS      = {CHECK_DAYS}")
+    print("─" * 60)
+    try:
+        main()
+    except Exception:
+        traceback.print_exc()
+        raise SystemExit(1)
